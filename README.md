@@ -75,3 +75,28 @@ Når nøglen er sat, krypterer `load_to_hdfs` CSV-records, og `load_to_hive`
 gemmer samme type krypterede records som Parquet i Hive. Beeline viser derfor
 ciphertext, mens `decrypt_record` i `modules/security.py` kan bruges af en
 senere visualiseringsdel efter læsning fra Hive.
+
+## Krav 3: Visualisering
+
+`main.py` læser den krypterede Hive-tabel, dekrypterer records i
+`read_decrypted_hive_data` og kalder tre visualiseringsmetoder:
+
+- `scatter_plot`: `sepal_length` på x-aksen og `petal_length` på y-aksen
+- `histogram`: `petal_width` med 10 bins
+- `boxplot`: 2x2-layout med alle fire numeriske målinger
+
+PNG-filerne gemmes i HDFS `Output_dir` som:
+
+```text
+/user/amein/Output_dir/scatter_plot.png
+/user/amein/Output_dir/histogram.png
+/user/amein/Output_dir/boxplot.png
+```
+
+Kør hele flowet med:
+
+```bash
+export PIPELINE_AES_KEY="..."
+spark-submit main.py
+hdfs dfs -ls /user/amein/Output_dir
+```

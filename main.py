@@ -2,7 +2,8 @@ from pyspark.sql import SparkSession
 
 from modules.extract import extract_to_hdfs
 from modules.transform import transform_iris_data
-from modules.load import load_to_hdfs
+from modules.load import load_to_hdfs, load_to_hive
+from modules.visualization import generate_plots_from_hive
 
 
 SOURCE_URL = (
@@ -12,6 +13,8 @@ SOURCE_URL = (
 
 INPUT_DIR = "/user/amein/Input_dir"
 OUTPUT_DIR = "/user/amein/Output_dir"
+HIVE_DATABASE = "iris_warehouse"
+HIVE_TABLE = "transformed_iris"
 
 
 def main():
@@ -74,7 +77,28 @@ def main():
             OUTPUT_DIR
         )
 
-        print("Load færdig:", output_path)
+        print("Load til HDFS færdig:", output_path)
+
+        print("Load til Hive starter...")
+
+        load_to_hive(
+            dataframe,
+            HIVE_DATABASE,
+            HIVE_TABLE
+        )
+
+        print("Load til Hive færdig.")
+
+        print("Visualisering starter...")
+
+        plot_paths = generate_plots_from_hive(
+            spark,
+            HIVE_DATABASE,
+            HIVE_TABLE,
+            OUTPUT_DIR
+        )
+
+        print("Diagrammer gemt:", plot_paths)
 
         print("ETL-pipeline gennemført korrekt.")
 
