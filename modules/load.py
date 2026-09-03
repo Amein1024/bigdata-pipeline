@@ -19,6 +19,7 @@ from pyspark.sql.types import (
     StringType,
     TimestampType,
 )
+from modules.security import encrypt_dataframe
 
 
 def load_to_hdfs(
@@ -69,9 +70,11 @@ def load_to_hdfs(
         check=False
     )
 
+    encrypted_dataframe = encrypt_dataframe(dataframe)
+
     try:
         (
-            dataframe
+            encrypted_dataframe
             .coalesce(1)
             .write
             .mode("overwrite")
@@ -229,39 +232,22 @@ def load_to_hive(
     )
 
     # ---------------------------------------------------------
-    # 1. Gem transformeret DataFrame som Parquet på HDFS
+    # 1. Gem transformerede records krypteret som Parquet på HDFS
     # ---------------------------------------------------------
 
+    encrypted_dataframe = encrypt_dataframe(dataframe)
     (
-        dataframe
+        encrypted_dataframe
         .write
         .mode("overwrite")
         .parquet(hive_data_path)
     )
 
     # ---------------------------------------------------------
-    # 2. Byg Hive-schema ud fra Spark DataFrame-schema
+    # 2. Byg Hive-schema for de krypterede records
     # ---------------------------------------------------------
 
-    hive_columns = []
-
-    for field in dataframe.schema.fields:
-        _validate_hive_identifier(field.name)
-
-        hive_type = _spark_type_to_hive(
-            field.dataType
-        )
-
-        hive_columns.append(
-            f"`{field.name}` {hive_type}"
-        )
-
-    if not hive_columns:
-        raise ValueError(
-            "DataFrame indeholder ingen kolonner."
-        )
-
-    columns_sql = ",\n".join(hive_columns)
+    columns_sql = "`encrypted_data` STRING"
 
     # ---------------------------------------------------------
     # 3. Hive SQL

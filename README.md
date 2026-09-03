@@ -54,3 +54,24 @@ SELECT * FROM transformed_iris LIMIT 10;
 ```
 
 Hive-metastore er konfigureret til MySQL i `~/hive/conf/hive-site.xml`.
+
+## Krav 2: Kryptering
+
+Pipelinen bruger AES-256-GCM. GCM er valgt, fordi krypteringen samtidig
+kontrollerer, om ciphertext er blevet ændret. Hver record får en ny tilfældig
+nonce, og den samme plaintext giver derfor ikke den samme ciphertext.
+
+Sikkerhedsmodulet indeholder også AES-256-CBC med HMAC-SHA256 som alternativ.
+CBC kaldes ikke af pipelinen, fordi CBC alene ikke beskytter integriteten.
+
+Generer en nøgle én gang pr. miljø og hold den uden for Git:
+
+```bash
+export PIPELINE_AES_KEY="$(python3 -c \
+	'import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())')"
+```
+
+Når nøglen er sat, krypterer `load_to_hdfs` CSV-records, og `load_to_hive`
+gemmer samme type krypterede records som Parquet i Hive. Beeline viser derfor
+ciphertext, mens `decrypt_record` i `modules/security.py` kan bruges af en
+senere visualiseringsdel efter læsning fra Hive.
