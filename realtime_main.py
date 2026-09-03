@@ -4,7 +4,7 @@ import time
 from pyspark.sql import SparkSession
 
 from modules.transform import transform_iris_data
-from modules.load import load_to_hdfs
+from modules.load import load_to_hdfs, load_to_hive
 
 
 # HDFS-mapper som real-time systemet arbejder med.
@@ -16,6 +16,10 @@ SOURCE_URL = (
     "https://raw.githubusercontent.com/"
     "jbrownlee/Datasets/master/iris.csv"
 )
+
+# Hive database og tabel.
+HIVE_DATABASE = "iris_warehouse"
+HIVE_TABLE = "transformed_iris"
 
 # Hvor ofte systemet kontrollerer Input_dir for ændringer.
 POLL_INTERVAL_SECONDS = 2
@@ -70,6 +74,10 @@ def process_file(
 ):
     """
     Kører Transform og Load på den opdagede CSV-fil.
+
+    Den transformerede DataFrame gemmes både:
+    - som CSV i HDFS
+    - som tabel i Hive
     """
 
     print(
@@ -89,7 +97,7 @@ def process_file(
     )
 
     print(
-        "Load starter...",
+        "Load til HDFS starter...",
         flush=True
     )
 
@@ -100,7 +108,23 @@ def process_file(
     )
 
     print(
-        "Load færdig.",
+        "Load til HDFS færdig.",
+        flush=True
+    )
+
+    print(
+        "Load til Hive starter...",
+        flush=True
+    )
+
+    load_to_hive(
+        transformed_df,
+        HIVE_DATABASE,
+        HIVE_TABLE
+    )
+
+    print(
+        "Load til Hive færdig.",
         flush=True
     )
 
@@ -113,9 +137,15 @@ def watch_input_dir():
     køres Transform og Load automatisk med Apache Spark.
     """
 
+    # Spark bruges til selve databehandlingen.
+    #
+    # Hive-support aktiveres ikke direkte i Spark,
+    # da Hive-operationerne udføres gennem HiveServer2/Beeline
+    # i Load-modulet.
     spark = (
         SparkSession.builder
         .appName("IrisRealTimePipeline")
+        .config("spark.sql.catalogImplementation", "in-memory")
         .getOrCreate()
     )
 

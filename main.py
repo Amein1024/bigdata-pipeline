@@ -34,6 +34,7 @@ def main():
     spark = (
         SparkSession.builder
         .appName("BigDataETLPipeline")
+        .config("spark.sql.catalogImplementation", "in-memory")
         .getOrCreate()
     )
 
